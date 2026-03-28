@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Play, Terminal, Activity, Clock, Database, CheckCircle, XCircle, Loader2, LogIn, User } from 'lucide-react';
+import { 
+  Play, 
+  Terminal, 
+  Activity, 
+  Clock, 
+  Database, 
+  CheckCircle, 
+  XCircle, 
+  Loader2, 
+  LogIn, 
+  User, 
+  LogOut 
+} from 'lucide-react';
 
 // Use environment variable for production URL
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+
 function App() {
   const [status, setStatus] = useState({ is_running: false, logs: [], last_run: null });
   const [user, setUser] = useState({ authenticated: false, email: "" });
@@ -42,9 +55,22 @@ function App() {
     }
   };
 
+  const handleLogout = async () => {
+    try {
+      await axios.post(`${API_BASE}/auth/logout`);
+      setUser({ authenticated: false, email: "" });
+      // Logs will naturally clear on the next poll if the backend cleared them
+    } catch (e) {
+      alert("Logout failed");
+    }
+  };
+
   const startPipeline = async () => {
-    try { await axios.post(`${API_BASE}/start`); } 
-    catch (e) { alert(e.response?.data?.detail || "Execution failed"); }
+    try { 
+      await axios.post(`${API_BASE}/start`); 
+    } catch (e) { 
+      alert(e.response?.data?.detail || "Execution failed"); 
+    }
   };
 
   return (
@@ -65,19 +91,32 @@ function App() {
             {!user.authenticated ? (
               <button
                 onClick={handleLogin}
-                className="bg-white text-black px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-200 transition-all"
+                className="bg-white text-black px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-200 transition-all shadow-lg shadow-white/5"
               >
                 <LogIn size={20} /> Login with Google
               </button>
             ) : (
-              <div className="flex flex-col items-end">
-                <div className="flex items-center gap-2 text-green-400 font-mono text-sm bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
-                  <User size={14} /> {user.email}
+              <div className="flex flex-col items-end gap-3">
+                <div className="flex items-center gap-3">
+                  {/* Email Badge */}
+                  <div className="flex items-center gap-2 text-green-400 font-mono text-sm bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
+                    <User size={14} /> {user.email}
+                  </div>
+                  
+                  {/* Logout Button */}
+                  <button
+                    onClick={handleLogout}
+                    className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
+                    title="Logout"
+                  >
+                    <LogOut size={18} />
+                  </button>
                 </div>
+
                 <button
                   onClick={startPipeline}
                   disabled={status.is_running}
-                  className={`mt-4 px-8 py-4 rounded-xl font-bold text-lg flex items-center gap-3 transition-all shadow-xl ${
+                  className={`px-8 py-4 rounded-xl font-bold text-lg flex items-center gap-3 transition-all shadow-xl ${
                     status.is_running 
                     ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
                     : "bg-blue-600 hover:bg-blue-500 hover:scale-105 active:scale-95 text-white"
@@ -98,7 +137,9 @@ function App() {
               <Activity size={18} />
               <span className="text-xs font-bold uppercase tracking-wider">System Status</span>
             </div>
-            <p className="text-xl font-semibold">{status.is_running ? "Processing..." : "Ready / Idle"}</p>
+            <p className="text-xl font-semibold">
+              {status.is_running ? "Processing..." : user.authenticated ? "Ready" : "Idle"}
+            </p>
           </div>
 
           <div className="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl">
@@ -122,24 +163,39 @@ function App() {
         <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
           <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-800 flex justify-between items-center">
             <span className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest">Live Execution Stream</span>
+            <div className="flex gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+            </div>
           </div>
           
-          <div className="h-[450px] overflow-y-auto p-6 font-mono text-sm space-y-3">
+          <div className="h-[450px] overflow-y-auto p-6 font-mono text-sm space-y-3 custom-scrollbar">
             {!user.authenticated ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-500 italic">
+                <LogIn size={40} className="mb-4 opacity-20" />
                 <p>Please log in to view execution logs...</p>
               </div>
             ) : status.logs.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-600 italic">
+                <Terminal size={40} className="mb-4 opacity-20" />
                 <p>Waiting for trigger...</p>
               </div>
             ) : (
-              status.logs.map((log, i) => (
-                <div key={i} className="flex gap-4 border-b border-slate-800/50 pb-2">
-                  <span className="text-slate-700 select-none">{(i + 1).toString().padStart(3, '0')}</span>
-                  <p className="text-slate-300">{log}</p>
-                </div>
-              ))
+              status.logs.map((log, i) => {
+                const isError = log.includes('❌') || log.includes('🚨') || log.includes('Error');
+                const isSuccess = log.includes('✅') || log.includes('🎉');
+                return (
+                  <div key={i} className="flex gap-4 border-b border-slate-800/30 pb-2">
+                    <span className="text-slate-700 select-none w-8">{(i + 1).toString().padStart(3, '0')}</span>
+                    <div className={`flex items-start gap-2 ${isError ? 'text-red-400' : isSuccess ? 'text-green-400' : 'text-slate-300'}`}>
+                      {isError && <XCircle size={14} className="mt-1 flex-shrink-0" />}
+                      {isSuccess && <CheckCircle size={14} className="mt-1 flex-shrink-0" />}
+                      <p className="leading-relaxed">{log}</p>
+                    </div>
+                  </div>
+                );
+              })
             )}
             <div ref={logEndRef} />
           </div>
