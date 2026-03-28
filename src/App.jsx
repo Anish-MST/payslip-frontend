@@ -51,11 +51,13 @@ function App() {
   };
 
   const handleLogout = async () => {
-    try {
-      await axios.post(`${API_BASE}/auth/logout`);
-      setUser({ authenticated: false, email: "" });
-    } catch (e) {
-      alert("Logout failed");
+    if (window.confirm("Are you sure you want to logout?")) {
+      try {
+        await axios.post(`${API_BASE}/auth/logout`);
+        setUser({ authenticated: false, email: "" });
+      } catch (e) {
+        alert("Logout failed");
+      }
     }
   };
 
@@ -91,24 +93,28 @@ function App() {
               </button>
             ) : (
               <div className="flex flex-col items-end gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-2 text-green-400 font-mono text-sm bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
-                    <User size={14} /> {user.email}
+                <div className="flex items-center gap-4">
+                  {/* Logged in as Info */}
+                  <div className="flex items-center gap-2 text-slate-400 font-mono text-sm bg-slate-800/50 px-4 py-2 rounded-xl border border-slate-700">
+                    <User size={14} className="text-green-500" /> 
+                    <span className="hidden sm:inline text-xs text-slate-500 mr-1 uppercase font-bold tracking-tighter">Active:</span>
+                    <span className="text-slate-200">{user.email}</span>
                   </div>
                   
+                  {/* CLEAR LOGOUT BUTTON */}
                   <button
                     onClick={handleLogout}
-                    className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
-                    title="Logout"
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white font-bold text-sm transition-all"
                   >
-                    <LogOut size={18} />
+                    <LogOut size={16} />
+                    Logout
                   </button>
                 </div>
 
                 <button
                   onClick={startPipeline}
                   disabled={status.is_running}
-                  className={`px-8 py-4 rounded-xl font-bold text-lg flex items-center gap-3 transition-all shadow-xl ${
+                  className={`px-10 py-4 rounded-xl font-bold text-lg flex items-center gap-3 transition-all shadow-xl ${
                     status.is_running 
                     ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
                     : "bg-blue-600 hover:bg-blue-500 hover:scale-105 active:scale-95 text-white"
