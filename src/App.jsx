@@ -14,14 +14,15 @@ import {
   LogOut 
 } from 'lucide-react';
 
-// Use environment variable for production URL
+// Configure Axios to always send cookies for session management
 const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
+axios.defaults.withCredentials = true;
 
 function App() {
   const [status, setStatus] = useState({ is_running: false, logs: [], last_run: null });
   const [user, setUser] = useState({ authenticated: false, email: "" });
 
-  // 1. Check Auth Status and Pipeline Status
+  // 1. Polling for Auth and Pipeline Status
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -32,7 +33,7 @@ function App() {
         setStatus(statusRes.data);
         setUser(authRes.data);
       } catch (e) {
-        console.error("Connection error");
+        console.error("Connection error to backend.");
       }
     };
 
@@ -44,14 +45,14 @@ function App() {
   const handleLogin = async () => {
     try {
       const res = await axios.get(`${API_BASE}/auth/login`);
-      window.location.href = res.data.url; // Redirect to Google
+      if (res.data.url) window.location.href = res.data.url;
     } catch (e) {
       alert("Failed to initialize login");
     }
   };
 
   const handleLogout = async () => {
-    if (window.confirm("Are you sure you want to logout?")) {
+    if (window.confirm("Confirm logout?")) {
       try {
         await axios.post(`${API_BASE}/auth/logout`);
         setUser({ authenticated: false, email: "" });
@@ -80,7 +81,7 @@ function App() {
               <Terminal className="text-blue-500" size={32} />
               Payslip Automation
             </h1>
-            <p className="text-slate-400 mt-1">Production Pipeline • MainstreamTek HR</p>
+            <p className="text-slate-400 mt-1">Multi-User Production Pipeline</p>
           </div>
           
           <div className="flex items-center gap-4">
@@ -94,14 +95,11 @@ function App() {
             ) : (
               <div className="flex flex-col items-end gap-3">
                 <div className="flex items-center gap-4">
-                  {/* Logged in as Info */}
                   <div className="flex items-center gap-2 text-slate-400 font-mono text-sm bg-slate-800/50 px-4 py-2 rounded-xl border border-slate-700">
                     <User size={14} className="text-green-500" /> 
-                    <span className="hidden sm:inline text-xs text-slate-500 mr-1 uppercase font-bold tracking-tighter">Active:</span>
                     <span className="text-slate-200">{user.email}</span>
                   </div>
                   
-                  {/* CLEAR LOGOUT BUTTON */}
                   <button
                     onClick={handleLogout}
                     className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white font-bold text-sm transition-all"
@@ -133,7 +131,7 @@ function App() {
           <div className="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl">
             <div className="flex items-center gap-3 text-blue-400 mb-2">
               <Activity size={18} />
-              <span className="text-xs font-bold uppercase tracking-wider">System Status</span>
+              <span className="text-xs font-bold uppercase tracking-wider">Session Status</span>
             </div>
             <p className="text-xl font-semibold">
               {status.is_running ? "Processing..." : user.authenticated ? "Ready" : "Idle"}
@@ -143,7 +141,7 @@ function App() {
           <div className="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl">
             <div className="flex items-center gap-3 text-purple-400 mb-2">
               <Clock size={18} />
-              <span className="text-xs font-bold uppercase tracking-wider">Last Run</span>
+              <span className="text-xs font-bold uppercase tracking-wider">Your Last Run</span>
             </div>
             <p className="text-xl font-semibold">{status.last_run ? new Date(status.last_run).toLocaleTimeString() : "Never"}</p>
           </div>
@@ -151,7 +149,7 @@ function App() {
           <div className="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl">
             <div className="flex items-center gap-3 text-green-400 mb-2">
               <Database size={18} />
-              <span className="text-xs font-bold uppercase tracking-wider">Master Data</span>
+              <span className="text-xs font-bold uppercase tracking-wider">Resources</span>
             </div>
             <p className="text-xl font-semibold">{user.authenticated ? "Connected" : "Disconnected"}</p>
           </div>
@@ -160,23 +158,17 @@ function App() {
         {/* Log Window */}
         <div className="bg-slate-900 border border-slate-800 rounded-3xl shadow-2xl overflow-hidden">
           <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-800 flex justify-between items-center">
-            <span className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest">Live Execution Stream</span>
-            <div className="flex gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
-              <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
-              <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
-            </div>
+            <span className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest">Personal Execution Stream</span>
           </div>
           
           <div className="h-[450px] overflow-y-auto p-6 font-mono text-sm space-y-3 custom-scrollbar">
             {!user.authenticated ? (
-              <div className="h-full flex flex-col items-center justify-center text-slate-500 italic">
-                <LogIn size={40} className="mb-4 opacity-20" />
-                <p>Please log in to view execution logs...</p>
+              <div className="h-full flex flex-col items-center justify-center text-slate-500 italic text-center">
+                <LogIn size={40} className="mb-4 opacity-20 mx-auto" />
+                <p>Login to start your automated session.</p>
               </div>
             ) : status.logs.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-slate-600 italic">
-                <Terminal size={40} className="mb-4 opacity-20" />
                 <p>Waiting for trigger...</p>
               </div>
             ) : (
