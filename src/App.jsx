@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
   Play, 
@@ -20,7 +20,6 @@ const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8000";
 function App() {
   const [status, setStatus] = useState({ is_running: false, logs: [], last_run: null });
   const [user, setUser] = useState({ authenticated: false, email: "" });
-  const logEndRef = useRef(null);
 
   // 1. Check Auth Status and Pipeline Status
   useEffect(() => {
@@ -42,10 +41,6 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => {
-    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [status.logs]);
-
   const handleLogin = async () => {
     try {
       const res = await axios.get(`${API_BASE}/auth/login`);
@@ -59,7 +54,6 @@ function App() {
     try {
       await axios.post(`${API_BASE}/auth/logout`);
       setUser({ authenticated: false, email: "" });
-      // Logs will naturally clear on the next poll if the backend cleared them
     } catch (e) {
       alert("Logout failed");
     }
@@ -91,19 +85,17 @@ function App() {
             {!user.authenticated ? (
               <button
                 onClick={handleLogin}
-                className="bg-white text-black px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-200 transition-all shadow-lg shadow-white/5"
+                className="bg-white text-black px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-200 transition-all shadow-lg"
               >
                 <LogIn size={20} /> Login with Google
               </button>
             ) : (
               <div className="flex flex-col items-end gap-3">
                 <div className="flex items-center gap-3">
-                  {/* Email Badge */}
                   <div className="flex items-center gap-2 text-green-400 font-mono text-sm bg-green-400/10 px-3 py-1 rounded-full border border-green-400/20">
                     <User size={14} /> {user.email}
                   </div>
                   
-                  {/* Logout Button */}
                   <button
                     onClick={handleLogout}
                     className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-all"
@@ -197,7 +189,6 @@ function App() {
                 );
               })
             )}
-            <div ref={logEndRef} />
           </div>
         </div>
       </div>
