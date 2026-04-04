@@ -20,19 +20,31 @@ function App() {
   const [status, setStatus] = useState({ is_running: false, logs: [], last_run: null });
   const [user, setUser] = useState({ authenticated: false, email: "" });
 
-  // --- Header/Auth Management ---
+  // Helper to format any date string into IST
+  const formatIST = (dateString) => {
+    if (!dateString) return "Never";
+    try {
+      return new Date(dateString).toLocaleTimeString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      }) + " IST";
+    } catch (e) {
+      return "Invalid Date";
+    }
+  };
+
   useEffect(() => {
-    // 1. Check if we just redirected from Google (look for session_id in URL)
     const urlParams = new URLSearchParams(window.location.search);
     const sessionFromUrl = urlParams.get('session_id');
 
     if (sessionFromUrl) {
       localStorage.setItem('session_id', sessionFromUrl);
-      // Clean the URL (remove session_id from address bar)
       window.history.replaceState({}, document.title, window.location.pathname);
     }
 
-    // 2. Initial Auth Check and Polling
     const fetchData = async () => {
       const sessionId = localStorage.getItem('session_id');
       if (!sessionId) {
@@ -49,7 +61,7 @@ function App() {
         setStatus(statusRes.data);
         setUser(authRes.data);
       } catch (e) {
-        console.error("Auth check failed");
+        console.error("Session connection lost.");
         if (e.response?.status === 401) localStorage.removeItem('session_id');
       }
     };
@@ -59,18 +71,17 @@ function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // --- Handlers ---
   const handleLogin = async () => {
     try {
       const res = await axios.get(`${API_BASE}/auth/login`);
       if (res.data.url) window.location.href = res.data.url;
     } catch (e) {
-      alert("Login failed to initialize");
+      alert("Login initialization failed");
     }
   };
 
   const handleLogout = async () => {
-    if (window.confirm("Confirm logout?")) {
+    if (window.confirm("Are you sure you want to logout?")) {
       const sessionId = localStorage.getItem('session_id');
       try {
         await axios.post(`${API_BASE}/auth/logout`, {}, {
@@ -91,75 +102,121 @@ function App() {
         headers: { Authorization: `Bearer ${sessionId}` }
       }); 
     } catch (e) { 
-      alert(e.response?.data?.detail || "Execution failed"); 
+      alert(e.response?.data?.detail || "Could not start automation."); 
     }
   };
 
-  // --- UI Render --- (Same as before, just using your standard theme)
   return (
     <div className="min-h-screen bg-[#0f172a] text-slate-100 p-4 md:p-10 font-sans">
       <div className="max-w-5xl mx-auto">
         
+        {/* Header */}
         <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-6">
           <div>
             <h1 className="text-3xl font-extrabold text-white flex items-center gap-3">
               <Terminal className="text-blue-500" size={32} /> Payslip Automation
             </h1>
-            <p className="text-slate-400 mt-1">Multi-User Production Pipeline</p>
+            <p className="text-slate-400 mt-1 uppercase tracking-widest text-[10px] font-bold">MainstreamTek Production Pipeline</p>
           </div>
           
           <div className="flex items-center gap-4">
             {!user.authenticated ? (
-              <button onClick={handleLogin} className="bg-white text-black px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-200 shadow-lg">
+              <button onClick={handleLogin} className="bg-white text-black px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-slate-200 shadow-xl transition-all">
                 <LogIn size={20} /> Login with Google
               </button>
             ) : (
               <div className="flex flex-col items-end gap-3">
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 text-slate-400 font-mono text-sm bg-slate-800/50 px-4 py-2 rounded-xl border border-slate-700">
-                    <User size={14} className="text-green-500" /> <span className="text-slate-200">{user.email}</span>
+                    <User size={14} className="text-green-500" /> 
+                    <span className="text-slate-200">{user.email}</span>
                   </div>
                   <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white font-bold text-sm transition-all">
                     <LogOut size={16} /> Logout
                   </button>
                 </div>
-                <button onClick={startPipeline} disabled={status.is_running} className={`px-10 py-4 rounded-xl font-bold text-lg flex items-center gap-3 transition-all shadow-xl ${status.is_running ? "bg-slate-800 text-slate-500 cursor-not-allowed" : "bg-blue-600 hover:bg-blue-500 text-white"}`}>
-                  {status.is_running ? <Loader2 className="animate-spin" /> : <Play fill="currentColor" size={20}/>} {status.is_running ? "Running..." : "Start Automation"}
+
+                <button
+                  onClick={startPipeline}
+                  disabled={status.is_running}
+                  className={`px-10 py-4 rounded-xl font-bold text-lg flex items-center gap-3 transition-all shadow-xl ${
+                    status.is_running 
+                    ? "bg-slate-800 text-slate-500 cursor-not-allowed" 
+                    : "bg-blue-600 hover:bg-blue-500 hover:scale-105 active:scale-95 text-white"
+                  }`}
+                >
+                  {status.is_running ? <Loader2 className="animate-spin" /> : <Play fill="currentColor" size={20}/>}
+                  {status.is_running ? "Running..." : "Start Automation"}
                 </button>
               </div>
             )}
           </div>
         </div>
 
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <div className="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl">
-            <span className="text-xs font-bold text-blue-400 uppercase">Status</span>
+            <div className="flex items-center gap-3 text-blue-400 mb-2">
+              <Activity size={18} />
+              <span className="text-xs font-bold uppercase tracking-wider">Session Status</span>
+            </div>
             <p className="text-xl font-semibold">{status.is_running ? "Processing..." : user.authenticated ? "Ready" : "Idle"}</p>
           </div>
+
           <div className="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl">
-            <span className="text-xs font-bold text-purple-400 uppercase">Last Run</span>
-            <p className="text-xl font-semibold">{status.last_run ? new Date(status.last_run).toLocaleTimeString() : "Never"}</p>
+            <div className="flex items-center gap-3 text-purple-400 mb-2">
+              <Clock size={18} />
+              <span className="text-xs font-bold uppercase tracking-wider">Last Run (IST)</span>
+            </div>
+            <p className="text-xl font-semibold">{formatIST(status.last_run)}</p>
           </div>
+
           <div className="bg-slate-800/50 border border-slate-700 p-6 rounded-2xl">
-            <span className="text-xs font-bold text-green-400 uppercase">Session</span>
+            <div className="flex items-center gap-3 text-green-400 mb-2">
+              <Database size={18} />
+              <span className="text-xs font-bold uppercase tracking-wider">Source</span>
+            </div>
             <p className="text-xl font-semibold">{user.authenticated ? "Authorized" : "Unauthorized"}</p>
           </div>
         </div>
 
+        {/* Log Window */}
         <div className="bg-slate-900 border border-slate-800 rounded-3xl overflow-hidden shadow-2xl">
-          <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-800 text-xs font-mono font-bold text-slate-500 uppercase">Live Logs</div>
+          <div className="bg-slate-800/50 px-6 py-4 border-b border-slate-800 flex justify-between items-center">
+            <span className="text-xs font-mono font-bold text-slate-500 uppercase tracking-widest">Live IST Stream</span>
+            <div className="flex gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+              <div className="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+            </div>
+          </div>
+          
           <div className="h-[450px] overflow-y-auto p-6 font-mono text-sm space-y-3 custom-scrollbar">
             {!user.authenticated ? (
-               <div className="h-full flex flex-col items-center justify-center text-slate-500 italic"><p>Please log in to authorize your session.</p></div>
+              <div className="h-full flex flex-col items-center justify-center text-slate-500 italic">
+                <LogIn size={40} className="mb-4 opacity-20" />
+                <p>Login with Google to start your session.</p>
+              </div>
             ) : status.logs.length === 0 ? (
-               <div className="h-full flex flex-col items-center justify-center text-slate-600 italic"><p>Waiting for trigger...</p></div>
+              <div className="h-full flex flex-col items-center justify-center text-slate-600 italic">
+                <Terminal size={40} className="mb-4 opacity-20" />
+                <p>Waiting for trigger...</p>
+              </div>
             ) : (
-              status.logs.map((log, i) => (
-                <div key={i} className="flex gap-4 border-b border-slate-800/30 pb-2">
-                  <span className="text-slate-700 w-8">{(i + 1).toString().padStart(3, '0')}</span>
-                  <p className={`leading-relaxed ${log.includes('❌') ? 'text-red-400' : log.includes('✅') ? 'text-green-400' : 'text-slate-300'}`}>{log}</p>
-                </div>
-              ))
+              status.logs.map((log, i) => {
+                const isError = log.includes('❌') || log.includes('🚨') || log.includes('Error');
+                const isSuccess = log.includes('✅') || log.includes('🎉');
+                return (
+                  <div key={i} className="flex gap-4 border-b border-slate-800/30 pb-2">
+                    <span className="text-slate-700 select-none w-8">{(i + 1).toString().padStart(3, '0')}</span>
+                    <div className={`flex items-start gap-2 ${isError ? 'text-red-400' : isSuccess ? 'text-green-400' : 'text-slate-300'}`}>
+                      {isError && <XCircle size={14} className="mt-1 flex-shrink-0" />}
+                      {isSuccess && <CheckCircle size={14} className="mt-1 flex-shrink-0" />}
+                      <p className="leading-relaxed">{log}</p>
+                    </div>
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
